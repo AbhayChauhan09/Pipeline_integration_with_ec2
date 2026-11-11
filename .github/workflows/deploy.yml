@@ -21,16 +21,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Step 2: Configure SSH
+      
       - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+          install -d -m 700 "$HOME/.ssh"
 
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
-          chmod 600 ~/.ssh/ec2_key
+          printf '%s\n' "$EC2_SSH_KEY" > "$HOME/.ssh/ec2_key"
 
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 "$HOME/.ssh/ec2_key"
+
+          echo "SSH key configured successfully
 
       # Step 3: Test SSH connection
       - name: Test EC2 Connection
