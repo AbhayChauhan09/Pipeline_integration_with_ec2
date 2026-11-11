@@ -1,0 +1,62 @@
+
+name: Deploy Application to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout GitHub repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Configure SSH
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key
+          chmod 600 ~/.ssh/ec2_key
+
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      # Step 3: Test SSH connection
+      - name: Test EC2 Connection
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+            -o StrictHostKeyChecking=yes \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "echo 'SSH connection successful!'"
+
+      # Step 4: Copy application to EC2
+      - name: Copy Application
+        run: |
+          scp -i ~/.ssh/ec2_key \
+            -o StrictHostKeyChecking=yes \
+            index.html \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/index.html
+
+      # Step 5: Deploy application
+      - name: Deploy to Nginx
+        run: |
+          ssh -i ~/.ssh/ec2_key \
+            -o StrictHostKeyChecking=yes \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "sudo install -o www-data -g www-data -m 644 /tmp/index.html /var/www/html/index.html && rm /tmp/index.html"
+
+      # Step 6: Verify deployment
+      - name: Deployment Complete
+        run: |
+          echo "Application successfully deployed to EC2!"
